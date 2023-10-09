@@ -52,10 +52,16 @@ class InterfazPrincipal:
         # Verificar las credenciales en la base de datos (o tu lógica de verificación)
         if self.verificar_en_base_de_datos(nombre_usuario, contraseña):
             messagebox.showinfo("Acceso Permitido", "Inicio de sesión exitoso.")
-            self.mostrar_menu_principal()
+            # Cerrar la ventana actual y mostrar el Menú Principal
+            self.master.destroy()
+            root = tk.Tk()
+            self.menu_principal = MenuPrincipal(root)
+            root.mainloop()
         else:
             messagebox.showerror("Error de Inicio de Sesión", "Nombre de usuario o contraseña incorrectos.")
 
+    def mostrar_menu_principal(self):
+        self.menu_principal = MenuPrincipal(tk.Toplevel(self.master))
 
     def verificar_en_base_de_datos(self, nombre_usuario, contraseña):
         print(f"Verificando credenciales para usuario: {nombre_usuario}")
@@ -72,40 +78,24 @@ class InterfazPrincipal:
             resultado = cursor.fetchone()
 
             if resultado:
-                contraseña_almacenada = resultado[0]
-                if self.verificar_contraseña(contraseña, contraseña_almacenada):
+                if self.verificar_contraseña(contraseña):
                     return True
-
-            print(f"Contraseña almacenada en la base de datos: {contraseña_almacenada}")
-
-            if self.verificar_contraseña(contraseña, contraseña_almacenada):
-                print("Contraseña verificada con éxito.")
-                return True
-            else:
-                print("Contraseña incorrecta.")
-            return False
+                
         finally:
             conexion.close()
 
-    def verificar_contraseña(self, contraseña, contraseña_almacenada):
-        if len(contraseña) < 8:
-            print("La contraseña debe tener al menos 8 caracteres.")
-            return False
-
-        salt = bytes.fromhex(contraseña_almacenada[:32])
-        clave_almacenada = contraseña_almacenada[32:]
-
+    def verificar_contraseña(self, contraseña):
+        salt = os.urandom(16)
         kdf = Scrypt(
             salt=salt,
             length=32,
             n=2**14,
             r=8,
             p=1,
-            backend=default_backend()
         )
         key = kdf.derive(contraseña.encode("utf-8"))
 
-        return key == bytes.fromhex(clave_almacenada)
+        return key
         
     def mostrar_segunda_interfaz(self):
         self.segunda_interfaz = SegundaInterfaz(self.master)
@@ -116,7 +106,7 @@ class InterfazPrincipal:
 
         # Derivar la clave usando Scrypt
         kdf = Scrypt(
-            salt=bytes(salt),
+            salt= salt,
             length=32,
             n=2**14,
             r=8,
