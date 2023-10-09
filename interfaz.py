@@ -40,7 +40,7 @@ class InterfazPrincipal:
         self.boton = tk.Button(master, text="Enviar", command=self.verificar_credenciales)
         self.boton.pack()
 
-        self.enlace_label = tk.Label(master, text="Ir a la Segunda Interfaz", fg="blue", cursor="hand2")
+        self.enlace_label = tk.Label(master, text="Registrarse", fg="blue", cursor="hand2")
         self.enlace_label.pack()
         self.enlace_label.bind("<Button-1>", lambda e: self.mostrar_segunda_interfaz())
 
@@ -116,7 +116,8 @@ class InterfazPrincipal:
         key = kdf.derive(contraseña.encode("utf-8"))
 
         # Devolver la concatenación del salt y la clave derivada como bytes
-        return salt + key
+        return salt, key
+    
 
 class SegundaInterfaz:
     def __init__(self, master):
@@ -187,7 +188,7 @@ class SegundaInterfaz:
                 messagebox.showerror("Error", "El correo es incorrecto")
                 return
 
-            self.guardar_en_base_de_datos(nombre_usuario, contraseña, experiencia, correo, nombre_apellidos, ciudad)
+            self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, contraseña)
 
             # Mostrar un mensaje de éxito
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.")
