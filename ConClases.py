@@ -14,7 +14,7 @@ class Main:
         root = tk.Tk()
         self.menu = MenuPrincipal(root)
         self.interfaz_inicio = InterfazInicio(root)
-        self.interfaz_registro = InterfazRegistro
+        self.interfaz_registro = InterfazRegistro(root)
         root.mainloop()
 
 
@@ -66,7 +66,6 @@ class InterfazInicio:
 class InterfazRegistro:
     #Creación de la interfaz de registro
     def __init__(self, master):
-        #
         self.master = tk.Toplevel(master)
         self.interfaz_registro()
 
@@ -126,7 +125,7 @@ class InterfazRegistro:
             # Obtener los valores de los campos de entrada
             nombre_usuario = self.entrada_nombre_usuario.get()
             contraseña = self.entrada_contraseña.get()
-            hashed_password = self.guardar_contraseña(contraseña) # Utilizar la función para guardar la contraseña de manera segura
+            salt, hashed_password = self.guardar_contraseña(contraseña) # Utilizar la función para guardar la contraseña de manera segura
             experiencia = self.combobox_experiencia.get()  # Obtener el valor seleccionado del combobox
             correo = self.entrada_correo.get()
             nombre_apellidos = self.entrada_nombre_apellidos.get()
@@ -138,7 +137,7 @@ class InterfazRegistro:
                 self.master.destroy()
                 return
             
-            self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, hashed_password) #Los guardo en la base de datos 
+            self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) #Los guardo en la base de datos 
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
             self.master.destroy()
 
@@ -162,9 +161,9 @@ class InterfazRegistro:
             backend=default_backend()
         )
         key = kdf.derive(contraseña.encode("utf-8"))
-        return key #no se si guardar el salt o no 
+        return salt,key #no se si guardar el salt o no 
     
-    def guardar_en_base_de_datos(self, nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, hashed_password):
+    def guardar_en_base_de_datos(self, nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password):
         # Conectar a la base de datos (creará la base de datos si no existe)
         conexion = sqlite3.connect("registro.db")
 
@@ -180,6 +179,7 @@ class InterfazRegistro:
                 ciudad TEXT,
                 experiencia TEXT,
                 nombre_usuario TEXT,
+                salt TEXT, 
                 hashed_password TEXT  
             )
         ''')
@@ -188,7 +188,7 @@ class InterfazRegistro:
         cursor.execute('''
             INSERT INTO usuarios (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, key) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, hashed_password))
+        ''', (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password))
 
         # Guardar los cambios y cerrar la conexión
         conexion.commit()
