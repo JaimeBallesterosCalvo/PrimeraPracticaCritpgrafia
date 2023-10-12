@@ -64,7 +64,7 @@ class InterfazPrincipal:
         self.menu_principal = MenuPrincipal(tk.Toplevel(self.master))
 
     def verificar_en_base_de_datos(self, nombre_usuario, contraseña):
-        print(f"Verificando credenciales para usuario: {nombre_usuario}")
+
         conexion = sqlite3.connect("registro.db")
 
         try:
