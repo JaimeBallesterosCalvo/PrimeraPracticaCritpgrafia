@@ -7,6 +7,8 @@ import os
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 class Main:
     def __init__(self):
@@ -15,11 +17,10 @@ class Main:
         self.interfaz_inicio = InterfazInicio(self.root,self)
         self.root.mainloop()
 
-    def mostrar_menu_principal(self, nombre_usuario):
+    def mostrar_menu_principal(self, nombre_usuario, contraseña, salt):
         # Muestra la interfaz del menú principal
-        key = AESGCM.generate_key(bit_length=128)
-        root_menu = tk.Tk()  # <-- Cambiado de self.root a root_menu
-        self.menu_principal = MenuPrincipal(root_menu, self, nombre_usuario)
+        root_menu = tk.Tk()  
+        self.menu_principal = MenuPrincipal(root_menu, self, nombre_usuario, contraseña, salt)
         root_menu.mainloop()
 
     def mostrar_interfaz_registro(self):
@@ -30,12 +31,13 @@ class Main:
 
 class MenuPrincipal: 
     #Creación de la interafaz del menú principal
-    def __init__(self, master, app, nombre_usuario):
+    def __init__(self, master, app, nombre_usuario, contraseña, salt):
         #Inicializa el menu
         self.master = master
         self.app = app
         self.nombre_usuario_actual = nombre_usuario
-        self.key = AESGCM.generate_key(bit_length=128)
+        self.salt = salt
+        self.contraseña = contraseña
         self.interfaz_menu_principal(nombre_usuario)
 
     def interfaz_menu_principal(self,nombre_usuario):
@@ -123,9 +125,10 @@ class MenuPrincipal:
 
         return datos_usuario
     
-    def buscar_mensajes(self, nombre_usuario):
+    def buscar_mensajes(self, nombre_usuario,):
         conexion = sqlite3.connect("registro.db")
         try:
+            #busca la persona con la que quieres hablar
             cursor = conexion.cursor()
             cursor.execute('''
                 SELECT 1
@@ -141,7 +144,11 @@ class MenuPrincipal:
             respuesta = messagebox.askquestion("Usuario Encontrado", f"¿Quieres hablar con {nombre_usuario}?")
             if respuesta == 'yes':
                 print(f"Iniciar conversación con {nombre_usuario}.")
-                self.iniciar_chat(nombre_usuario)
+                salt_destinatario = self.devolver_salt(nombre_usuario,self.contraseña)
+                salt_conjunto = self.salt + salt_destinatario
+                key= self.generar_key(self.contraseña, salt_conjunto) 
+                print(f"key {key}.")
+                self.iniciar_chat(nombre_usuario, key)
             else:
                 print("Conversación cancelada.")
         else:
@@ -149,12 +156,40 @@ class MenuPrincipal:
 
         return resultado is not None
     
-    def iniciar_chat(self, nombre_usuario):
+    def iniciar_chat(self, nombre_usuario, key):
         # Obtener el ID del usuario actual usando el nombre de usuario
         id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
 
         # Abrir una nueva ventana de chat
-        chat_ventana = ChatVentana(self.master, nombre_usuario, id_usuario_actual, self.key)
+        chat_ventana = ChatVentana(self.master, nombre_usuario, id_usuario_actual, key)
+    
+    def devolver_salt(self, nombre_usuario, contraseña):
+        conexion = sqlite3.connect("registro.db")
+        try:
+            cursor = conexion.cursor()
+            cursor.execute('''
+                SELECT salt, hashed_password
+                FROM usuarios
+                WHERE nombre_usuario = ?
+            ''', (nombre_usuario,))
+
+            resultado = cursor.fetchone()
+
+            if resultado:
+                stored_salt, hashed_password_en_bd = resultado
+                return stored_salt
+        finally:
+            conexion.close()
+
+    def generar_key(self, contraseña, salt):
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=480000,
+        )
+        key = kdf.derive(b"my great password")
+        return key
 
 class InterfazInicio:
     #Creación de la interfaz inicio
@@ -192,9 +227,6 @@ class InterfazInicio:
         # Función para que pase a la interfaz de registro
         self.pasar_interfaz_registro = InterfazRegistro(self.master, self.app, self)
 
-    def mostrar_menu_principal(self):
-        # Función para que pase al menú principal
-        self.app.mostrar_menu_principal()
 
     def verificar_credenciales(self):
         # Obtener los valores de los campos de entrada
@@ -206,8 +238,10 @@ class InterfazInicio:
             messagebox.showinfo("Acceso Permitido", "Inicio de sesión exitoso.")
             # Cerrar la ventana actual y mostrar el Menú Principal
             self.master.destroy()
+            #obtener el salt
+            salt = self.devolver_salt(nombre_usuario, contraseña)
             # Mostrar el Menú Principal
-            self.app.mostrar_menu_principal(nombre_usuario)
+            self.app.mostrar_menu_principal(nombre_usuario, contraseña, salt)
         else:
             messagebox.showerror("Error de Inicio de Sesión", "Nombre de usuario o contraseña incorrectos.")
 
@@ -231,6 +265,23 @@ class InterfazInicio:
         finally:
             conexion.close()
             
+    def devolver_salt(self, nombre_usuario, contraseña):
+        conexion = sqlite3.connect("registro.db")
+        try:
+            cursor = conexion.cursor()
+            cursor.execute('''
+                SELECT salt, hashed_password
+                FROM usuarios
+                WHERE nombre_usuario = ?
+            ''', (nombre_usuario,))
+
+            resultado = cursor.fetchone()
+
+            if resultado:
+                stored_salt, hashed_password_en_bd = resultado
+                return stored_salt
+        finally:
+            conexion.close()
 
     def verificar_contraseña(self, contraseña, stored_salt, hashed_password_en_bd):
         kdf = Scrypt(
@@ -242,7 +293,7 @@ class InterfazInicio:
         )
         key = kdf.derive(contraseña.encode("utf-8"))
 
-        return key == hashed_password_en_bd
+        return key == hashed_password_en_bd 
     
 class InterfazRegistro:
     #Creación de la interfaz de registro
@@ -418,8 +469,8 @@ class ChatVentana(tk.Toplevel):
             self.area_mensajes.insert(tk.END, "¡Bienvenido al chat!\n")
         else:
             for mensaje in mensajes:
-                decrypted_message = self.decrypt_message(mensaje[0], bytes(mensaje[1]), self.key, b"additional_authenticated_data")
-                self.area_mensajes.insert(tk.END, f"{mensaje[1]}: {decrypted_message.decode('utf-8')}\n")
+                decrypted_message = self.decrypt_message(bytes(mensaje[0]), bytes(mensaje[1]), self.key, b"additional_authenticated_data")
+                self.area_mensajes.insert(tk.END, f"{mensaje[2]}: {decrypted_message.decode('utf-8')}\n")
     def obtener_mensajes_desde_bd(self):
         conexion = sqlite3.connect("registro.db")
         try:
