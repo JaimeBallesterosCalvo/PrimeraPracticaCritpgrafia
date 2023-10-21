@@ -5,7 +5,6 @@ import re  # Importar el módulo de expresiones regulares
 from tkinter import ttk #proporciona el desplegable como el de experiencia
 import os
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -412,7 +411,7 @@ class InterfazRegistro:
         conexion.close()
         return resultado is not None
 
-    def guardar_contraseña(self, contraseña): #revisar con alex
+    def guardar_contraseña(self, contraseña): 
         # Lógica para guardar la contraseña de manera segura
         salt = os.urandom(16)
         kdf = Scrypt(
@@ -421,10 +420,9 @@ class InterfazRegistro:
             n=2**14,
             r=8,
             p=1,
-            backend=default_backend()
         )
         key = kdf.derive(contraseña.encode("utf-8"))
-        return salt,key #no se si guardar el salt o no 
+        return salt,key  
     
     def guardar_en_base_de_datos(self, nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password):
         # Conectar a la base de datos (creará la base de datos si no existe)
