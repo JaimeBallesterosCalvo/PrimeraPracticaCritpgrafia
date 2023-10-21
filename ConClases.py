@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 class Main:
+    #La clase Main donde se inicializan las distintas pantallas
     def __init__(self):
         # Inicializa solo la interfaz de inicio
         self.root = tk.Tk()
@@ -243,6 +244,7 @@ class InterfazInicio:
 
 
     def verificar_credenciales(self):
+        #Verifica las credenciales para ver si el nombre del usuario y la contraseña son correctas
         # Obtener los valores de los campos de entrada
         nombre_usuario = self.entrada_usuario.get()
         contraseña = self.entrada_contraseña.get()
@@ -252,14 +254,13 @@ class InterfazInicio:
             messagebox.showinfo("Acceso Permitido", "Inicio de sesión exitoso.")
             # Cerrar la ventana actual y mostrar el Menú Principal
             self.master.destroy()
-            #obtener el salt
-            salt = self.devolver_salt(nombre_usuario, contraseña)
             # Mostrar el Menú Principal
-            self.app.mostrar_menu_principal(nombre_usuario, contraseña, salt)
+            self.app.mostrar_menu_principal(nombre_usuario, contraseña)
         else:
             messagebox.showerror("Error de Inicio de Sesión", "Nombre de usuario o contraseña incorrectos.")
 
     def verificar_en_base_de_datos(self, nombre_usuario, contraseña):
+        #Comprueba los datos dados con los de la base de datos 
         conexion = sqlite3.connect("registro.db")
         try:
             cursor = conexion.cursor()
@@ -268,36 +269,15 @@ class InterfazInicio:
                 FROM usuarios
                 WHERE nombre_usuario = ?
             ''', (nombre_usuario,))
-
             resultado = cursor.fetchone()
-
             if resultado:
                 stored_salt, hashed_password_en_bd = resultado
-                return self.verificar_contraseña(contraseña, stored_salt, hashed_password_en_bd)
-
-                
-        finally:
-            conexion.close()
-            
-    def devolver_salt(self, nombre_usuario, contraseña):
-        conexion = sqlite3.connect("registro.db")
-        try:
-            cursor = conexion.cursor()
-            cursor.execute('''
-                SELECT salt, hashed_password
-                FROM usuarios
-                WHERE nombre_usuario = ?
-            ''', (nombre_usuario,))
-
-            resultado = cursor.fetchone()
-
-            if resultado:
-                stored_salt, hashed_password_en_bd = resultado
-                return stored_salt
+                return self.verificar_contraseña(contraseña, stored_salt, hashed_password_en_bd)                
         finally:
             conexion.close()
 
     def verificar_contraseña(self, contraseña, stored_salt, hashed_password_en_bd):
+        #Se utiliza el Scrypt para cifrar la contraseña
         kdf = Scrypt(
             salt=stored_salt,
             length=32,
@@ -374,10 +354,19 @@ class InterfazRegistro:
         try:
             # Obtener los valores de los campos de entrada
             nombre_usuario = self.entrada_nombre_usuario.get()
+            if self.usuario_existente(nombre_usuario):
+                messagebox.showerror("Error", "El nombre de usuario ya está registrado. Por favor, elige otro.")
+                return
             contraseña = self.entrada_contraseña.get()
+            if not self.validar_contraseña(contraseña):
+                messagebox.showerror("Error", "La contraseña debe tener al menos 8 caracteres y contener letras y números.")
+                return
             salt, hashed_password = self.guardar_contraseña(contraseña) # Utilizar la función para guardar la contraseña de manera segura
             experiencia = self.combobox_experiencia.get()  # Obtener el valor seleccionado del combobox
             correo = self.entrada_correo.get()
+            if self.correo_existente(correo):
+                messagebox.showerror("Error", "El correo ya está registrado. Por favor, utiliza otro.")
+                return
             nombre_apellidos = self.entrada_nombre_apellidos.get()
             ciudad = self.entrada_ciudad.get()
 
@@ -398,6 +387,30 @@ class InterfazRegistro:
         # Verifica que el correo tiene el formato correcto
         patron_correo = re.compile(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$')
         return patron_correo.match(correo) is not None
+    
+    def validar_contraseña(self, contraseña):
+        # Verifica que la contraseña tenga al menos 8 caracteres, contenga letras y números
+        if len(contraseña) < 8 or not re.search(r'[a-zA-Z]', contraseña) or not re.search(r'\d', contraseña):
+            return False
+        return True
+    
+    def usuario_existente(self, nombre_usuario):
+        # Verificar si el nombre de usuario ya está en la base de datos
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+        cursor.execute("SELECT * FROM usuarios WHERE nombre_usuario = ?", (nombre_usuario,))
+        resultado = cursor.fetchone()
+        conexion.close()
+        return resultado is not None
+
+    def correo_existente(self, correo):
+        # Verificar si el correo ya está en la base de datos
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+        cursor.execute("SELECT * FROM usuarios WHERE correo = ?", (correo,))
+        resultado = cursor.fetchone()
+        conexion.close()
+        return resultado is not None
 
     def guardar_contraseña(self, contraseña): #revisar con alex
         # Lógica para guardar la contraseña de manera segura
