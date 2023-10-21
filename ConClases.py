@@ -17,10 +17,10 @@ class Main:
         self.interfaz_inicio = InterfazInicio(self.root,self)
         self.root.mainloop()
 
-    def mostrar_menu_principal(self, nombre_usuario, contraseña, salt):
+    def mostrar_menu_principal(self, nombre_usuario, contraseña):
         # Muestra la interfaz del menú principal
         root_menu = tk.Tk()  
-        self.menu_principal = MenuPrincipal(root_menu, self, nombre_usuario, contraseña, salt)
+        self.menu_principal = MenuPrincipal(root_menu, self, nombre_usuario, contraseña)
         root_menu.mainloop()
 
     def mostrar_interfaz_registro(self):
@@ -31,16 +31,16 @@ class Main:
 
 class MenuPrincipal: 
     #Creación de la interafaz del menú principal
-    def __init__(self, master, app, nombre_usuario, contraseña, salt):
-        #Inicializa el menu
+    def __init__(self, master, app, nombre_usuario, contraseña):
+        #Inicializa el menu y declara los parametros necesarios
         self.master = master
         self.app = app
         self.nombre_usuario_actual = nombre_usuario
-        self.salt = salt
         self.contraseña = contraseña
         self.interfaz_menu_principal(nombre_usuario)
 
     def interfaz_menu_principal(self,nombre_usuario):
+        #crea el menú principal donde aparecen los datos del usuario nada más entrar
         self.master.title("Menú Principal")
         self.master.geometry("400x400")
 
@@ -71,6 +71,7 @@ class MenuPrincipal:
         self.crear_pestaña_torneos(notebook)
 
     def crear_pestaña_mensajes(self, notebook):
+        #crea la pestaña mensajes que se desarrollara el contenido más adelante
         pestaña_mensajes = tk.Frame(notebook)
         notebook.add(pestaña_mensajes, text="Mensajes")
 
@@ -83,10 +84,12 @@ class MenuPrincipal:
         boton_buscar.grid(row=0, column=2, padx=10, pady=10)
 
     def crear_pestaña_torneos(self, notebook):
+        #crea la pestaña de torneos, fase de entrega 2
         pestaña_torneos = tk.Frame(notebook)
         notebook.add(pestaña_torneos, text="Torneos")
 
     def obtener_id_usuario(self, nombre_usuario):
+        #busca el nombre en la base de datos, y si está, obtienes su id
         conexion = sqlite3.connect("registro.db")
         try:
             cursor = conexion.cursor()
@@ -98,18 +101,15 @@ class MenuPrincipal:
             id_usuario = cursor.fetchone()
         finally:
             conexion.close()
-
         return id_usuario[0] if id_usuario else None
 
     def obtener_datos_usuario(self,nombre_usuario):
+        #Con el ID obtenido, ya simplemente buscarlo en la tabla y sacar los datos de la tabla
         # Obtener el ID del usuario actual usando el nombre de usuario
         id_usuario_actual = self.obtener_id_usuario(nombre_usuario)
-
         if id_usuario_actual is None:
             # Manejar el caso en el que no se encuentra el usuario
             return None
-
-
         # Obtener los datos del usuario desde la base de datos usando el ID
         conexion = sqlite3.connect("registro.db")
         try:
@@ -126,6 +126,7 @@ class MenuPrincipal:
         return datos_usuario
     
     def buscar_mensajes(self, nombre_usuario,):
+        #Busca la persona con la que vas a hablar 
         conexion = sqlite3.connect("registro.db")
         try:
             #busca la persona con la que quieres hablar
@@ -143,11 +144,21 @@ class MenuPrincipal:
         if resultado is not None:
             respuesta = messagebox.askquestion("Usuario Encontrado", f"¿Quieres hablar con {nombre_usuario}?")
             if respuesta == 'yes':
-                print(f"Iniciar conversación con {nombre_usuario}.")
+                #Al decir que si, lo que también hace es calcular la key que los dos vais a utilizar para cifrar y descrifrar los mensajes
+                #Esto lo va a hacer cogiendo los salts de los dos usuarios, y unificandolos para que se cifre con la misma clave
+                #Lo primero es obtener los id para asi luego tener acceso a los salt de cada uno
+                id_destino = self.obtener_id_usuario(nombre_usuario)
+                id_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
+                #Saca los salt de cada uno de los usuarios 
                 salt_destinatario = self.devolver_salt(nombre_usuario,self.contraseña)
-                salt_conjunto = self.salt + salt_destinatario
+                salt_actual = self.devolver_salt(self.nombre_usuario_actual, self.contraseña)
+                #Ahora voy a concatenar los salt. El problema es que hay que tener cuidado, porque el orden es importante, no calcula el mismo salt si lo cambio de lado
+                #La idea es que el id más pequeño vaya primero
+                if id_actual < id_destino:
+                    salt_conjunto = salt_actual + salt_destinatario
+                else: 
+                    salt_conjunto = salt_destinatario +salt_actual
                 key= self.generar_key(self.contraseña, salt_conjunto) 
-                print(f"key {key}.")
                 self.iniciar_chat(nombre_usuario, key)
             else:
                 print("Conversación cancelada.")
@@ -157,13 +168,15 @@ class MenuPrincipal:
         return resultado is not None
     
     def iniciar_chat(self, nombre_usuario, key):
-        # Obtener el ID del usuario actual usando el nombre de usuario
+        #Abrir el chat con la persona
+        #Obtener el ID del usuario actual usando el nombre de usuario
         id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
 
         # Abrir una nueva ventana de chat
         chat_ventana = ChatVentana(self.master, nombre_usuario, id_usuario_actual, key)
     
     def devolver_salt(self, nombre_usuario, contraseña):
+        #Dado un nombre de usuario, busca en la tabla su salt y lo devuelve
         conexion = sqlite3.connect("registro.db")
         try:
             cursor = conexion.cursor()
@@ -182,6 +195,7 @@ class MenuPrincipal:
             conexion.close()
 
     def generar_key(self, contraseña, salt):
+        #Cifra la key
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
