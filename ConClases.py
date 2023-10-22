@@ -202,7 +202,7 @@ class MenuPrincipal:
             salt=salt,
             iterations=480000,
         )
-        key = kdf.derive(b"my great password")
+        key = kdf.derive(b"my great password") #la contraseña de la clave maestra es esta, en una aplicación de verdad tendría que estar cifrada y guardada
         return key
 
 class InterfazInicio:
