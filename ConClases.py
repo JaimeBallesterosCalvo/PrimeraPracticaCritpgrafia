@@ -31,12 +31,11 @@ class Main:
 
 class MenuPrincipal: 
     #Creación de la interafaz del menú principal
-    def __init__(self, master, app, nombre_usuario, contraseña):
+    def __init__(self, master, app, nombre_usuario):
         #Inicializa el menu y declara los parametros necesarios
         self.master = master
         self.app = app
         self.nombre_usuario_actual = nombre_usuario
-        self.contraseña = contraseña
         self.interfaz_menu_principal(nombre_usuario)
 
     def interfaz_menu_principal(self,nombre_usuario):
@@ -150,15 +149,15 @@ class MenuPrincipal:
                 id_destino = self.obtener_id_usuario(nombre_usuario)
                 id_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
                 #Saca los salt de cada uno de los usuarios 
-                salt_destinatario = self.devolver_salt(nombre_usuario,self.contraseña)
-                salt_actual = self.devolver_salt(self.nombre_usuario_actual, self.contraseña)
+                salt_destinatario = self.devolver_salt(nombre_usuario)
+                salt_actual = self.devolver_salt(self.nombre_usuario_actual)
                 #Ahora voy a concatenar los salt. El problema es que hay que tener cuidado, porque el orden es importante, no calcula el mismo salt si lo cambio de lado
                 #La idea es que el id más pequeño vaya primero
                 if id_actual < id_destino:
                     salt_conjunto = salt_actual + salt_destinatario
                 else: 
                     salt_conjunto = salt_destinatario +salt_actual
-                key= self.generar_key(self.contraseña, salt_conjunto) 
+                key= self.generar_key(salt_conjunto) 
                 self.iniciar_chat(nombre_usuario, key)
             else:
                 print("Conversación cancelada.")
@@ -175,7 +174,7 @@ class MenuPrincipal:
         # Abrir una nueva ventana de chat
         chat_ventana = ChatVentana(self.master, nombre_usuario, id_usuario_actual, key)
     
-    def devolver_salt(self, nombre_usuario, contraseña):
+    def devolver_salt(self, nombre_usuario):
         #Dado un nombre de usuario, busca en la tabla su salt y lo devuelve
         conexion = sqlite3.connect("registro.db")
         try:
@@ -194,7 +193,7 @@ class MenuPrincipal:
         finally:
             conexion.close()
 
-    def generar_key(self, contraseña, salt):
+    def generar_key(self,salt):
         #Cifra la key
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
@@ -254,7 +253,7 @@ class InterfazInicio:
             # Cerrar la ventana actual y mostrar el Menú Principal
             self.master.destroy()
             # Mostrar el Menú Principal
-            self.app.mostrar_menu_principal(nombre_usuario, contraseña)
+            self.app.mostrar_menu_principal(nombre_usuario)
         else:
             messagebox.showerror("Error de Inicio de Sesión", "Nombre de usuario o contraseña incorrectos.")
 
