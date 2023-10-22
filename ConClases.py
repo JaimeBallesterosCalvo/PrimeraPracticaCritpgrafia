@@ -17,10 +17,10 @@ class Main:
         self.interfaz_inicio = InterfazInicio(self.root,self)
         self.root.mainloop()
 
-    def mostrar_menu_principal(self, nombre_usuario, contraseña):
+    def mostrar_menu_principal(self, nombre_usuario):
         # Muestra la interfaz del menú principal
         root_menu = tk.Tk()  
-        self.menu_principal = MenuPrincipal(root_menu, self, nombre_usuario, contraseña)
+        self.menu_principal = MenuPrincipal(root_menu, self, nombre_usuario)
         root_menu.mainloop()
 
     def mostrar_interfaz_registro(self):
