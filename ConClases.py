@@ -644,8 +644,15 @@ class Creacion_torneo(tk.Toplevel):
         self.label_hora = tk.Label(self.master, text="Hora:")
         self.label_hora.pack()
 
-        self.entrada_hora = tk.Entry(self.master)
-        self.entrada_hora.pack()
+        # Selector de horas
+        horas = [str(i).zfill(2) for i in range(24)]  # Rellenar con cero a la izquierda
+        self.combobox_horas = ttk.Combobox(self.master, values=horas, state="readonly")
+        self.combobox_horas.pack()
+
+        # Selector de minutos
+        minutos = [str(i).zfill(2) for i in range(60)]  # Rellenar con cero a la izquierda
+        self.combobox_minutos = ttk.Combobox(self.master, values=minutos, state="readonly")
+        self.combobox_minutos.pack()
 
         self.label_nivel = tk.Label(self.master, text="Nivel:")
         self.label_nivel.pack()
@@ -675,49 +682,62 @@ class Creacion_torneo(tk.Toplevel):
                 messagebox.showerror("Error", "El nombre del torneo ya está registrado. Por favor, elige otro.")
                 return
             fecha = self.entrada_fecha.get()
-            hora = self.entrada_hora.get()
+            # Obtener horas y minutos seleccionados
+            hora = self.combobox_horas.get()
+            minutos = self.combobox_minutos.get()
+
+            # Unir horas y minutos en el formato deseado
+            hora_completa = f"{hora}:{minutos}"
             nivel = self.combobox_nivel.get()
             lugar = self.entrada_lugar.get()
             precio = self.entrada_precio.get()
 
-            self.guardar_en_la_base(nombre_torneo, fecha, hora, nivel, lugar, precio)
+            self.guardar_en_la_base(nombre_torneo, fecha, hora_completa, nivel, lugar, precio)
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
             self.master.destroy()
 
         except Exception as e: #para que me salte las excepciones si pasa algo 
             messagebox.showerror("Error", f"Error al registrar: {str(e)}")
 
-    def guardar_en_la_base(nombre_torneo, fecha, hora, nivel, lugar, precio):
-        # Conectar a la base de datos (creará la base de datos si no existe)
-        conexion = sqlite3.connect("registro.db")
+    def guardar_en_la_base(self, nombre_torneo, fecha, hora, nivel, lugar, precio):
+        try:
+            # Conectar a la base de datos (creará la base de datos si no existe)
+            conexion = sqlite3.connect("registro.db")
 
-        cursor = conexion.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS torneos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT,
-                fecha TEXT,
-                hora TEXT,
-                nivel TEXT,
-                lugar TEXT,
-                precio REAL
-            )
-        ''')
+            cursor = conexion.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Torneos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nombre_torneo TEXT,
+                    fecha TEXT,
+                    hora TEXT,
+                    nivel TEXT,
+                    lugar TEXT,
+                    precio REAL
+                )
+            ''')
+            
 
-        # Insertar los datos en la tabla    
-        cursor.execute('''
-            INSERT INTO torneos (nombre, fecha, hora, nivel, lugar, precio)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (nombre_torneo, fecha, hora, nivel, lugar, precio))
-        # Guardar los cambios y cerrar la conexión
-        conexion.commit()
-        conexion.close()
+            # Insertar los datos en la tabla
+            cursor.execute('''
+                INSERT INTO Torneos (nombre_torneo, fecha, hora, nivel, lugar, precio)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (nombre_torneo, fecha, hora, nivel, lugar, precio))
+            # Guardar los cambios y cerrar la conexión
+            conexion.commit()
+            conexion.close()
+
+        except Exception as e:
+            print(f"Error en guardar_en_la_base: {str(e)}")
+            raise e  # Vuelve a lanzar la excepción para ver el seguimiento completo
+
+
     
     def torneo_existente(self, nombre_torneo):
         # Verificar si el nombre de usuario ya está en la base de datos
         conexion = sqlite3.connect("registro.db")
         cursor = conexion.cursor()
-        cursor.execute("SELECT * FROM torneos WHERE nombre_torneo = ?", (nombre_torneo,))
+        cursor.execute("SELECT * FROM Torneos WHERE nombre_torneo = ?", (nombre_torneo,))
         resultado = cursor.fetchone()
         conexion.close()
         return resultado is not None
