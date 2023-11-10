@@ -83,9 +83,42 @@ class MenuPrincipal:
         boton_buscar.grid(row=0, column=2, padx=10, pady=10)
 
     def crear_pestaña_torneos(self, notebook):
-        #crea la pestaña de torneos, fase de entrega 2
+        # Crea la pestaña de torneos, fase de entrega 2
         pestaña_torneos = tk.Frame(notebook)
         notebook.add(pestaña_torneos, text="Torneos")
+
+        # Botón para crear torneo
+        boton_crear = tk.Button(pestaña_torneos, text="Crear Torneo", command=lambda: self.crear_torneos(), width=10, height=1)
+        boton_crear.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")  # Ajustado ancho, alto y sticky
+
+        # Botón para apuntarse a torneo
+        boton_apuntarse = tk.Button(pestaña_torneos, text="Apuntarse a Torneos", command=lambda: self.apuntarse_torneos(), width=10, height=1)
+        boton_apuntarse.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")  # Ajustado ancho, alto y sticky
+
+        # Botón para ver torneos
+        boton_ver_torneos = tk.Button(pestaña_torneos, text="Ver Torneos", command=lambda: self.ver_torneos(), width=10, height=1)
+        boton_ver_torneos.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")  # Ajustado ancho, alto y sticky
+
+        # Configurar pesos de filas y columnas para centrar los botones
+        pestaña_torneos.grid_rowconfigure(0, weight=1)
+        pestaña_torneos.grid_rowconfigure(1, weight=1)
+        pestaña_torneos.grid_rowconfigure(2, weight=1)
+        pestaña_torneos.grid_columnconfigure(0, weight=1)
+    def crear_torneos(self):
+        #te lleva a la clase crear torneos
+        id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
+        crear_torneos = Creacion_torneo(self.master,id_usuario_actual)
+
+    def apuntarse_torneos(self):
+        #te llevo a la clase apuntarse a torneos
+        id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
+        apuntarse_torneos = Apuntarse_torneos(self.master,id_usuario_actual)
+    
+    def ver_torneos(self):
+        #te lleva a la clase ver torneos
+        id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
+        ver_torneos = Ver_torneos(self.master,id_usuario_actual)
+
 
     def obtener_id_usuario(self, nombre_usuario):
         #busca el nombre en la base de datos, y si está, obtienes su id
@@ -584,6 +617,127 @@ class ChatVentana(tk.Toplevel):
         aesgcm = AESGCM(key)
         decrypted_message = aesgcm.decrypt(nonce, ciphertext, aad)
         return decrypted_message
+    
+class Creacion_torneo(tk.Toplevel):
+    def __init__(self, master, id_usuario):
+        self.master = tk.Tk() 
+        self.master.title(f"Creación de torneos")
+        self.master.geometry("400x400")
+        self.id_usuario = id_usuario
+        self.datos_torneos()
+        self.boton_crear_torneos = tk.Button(self.master, text="Crear", command=self.crear) 
+        self.boton_crear_torneos.pack()
+
+    def datos_torneos(self):
+        self.label_nombre_torneo = tk.Label(self.master, text="Nombre del torneo:")
+        self.label_nombre_torneo.pack()
+
+        self.entrada_nombre_torneo = tk.Entry(self.master)
+        self.entrada_nombre_torneo.pack()
+
+        self.label_fecha = tk.Label(self.master, text="Fecha:")
+        self.label_fecha.pack()
+
+        self.entrada_fecha = tk.Entry(self.master)
+        self.entrada_fecha.pack()
+
+        self.label_hora = tk.Label(self.master, text="Hora:")
+        self.label_hora.pack()
+
+        self.entrada_hora = tk.Entry(self.master)
+        self.entrada_hora.pack()
+
+        self.label_nivel = tk.Label(self.master, text="Nivel:")
+        self.label_nivel.pack()
+
+        # Opciones para el menú desplegable de experiencia
+        opciones_experiencia = ["Cero Patatero", "Poca", "Media", "Alta", "Modo Dios"]
+
+        self.combobox_nivel = ttk.Combobox(self.master, values=opciones_experiencia, state="readonly")
+        self.combobox_nivel.pack()
+
+        self.label_lugar = tk.Label(self.master, text="Lugar:")
+        self.label_lugar.pack()
+
+        self.entrada_lugar = tk.Entry(self.master)
+        self.entrada_lugar.pack()
+
+        self.label_precio = tk.Label(self.master, text="Precio (en euros):")
+        self.label_precio.pack()
+
+        self.entrada_precio = tk.Entry(self.master)
+        self.entrada_precio.pack()
+
+    def crear(self):
+        try: 
+            nombre_torneo = self.entrada_nombre_torneo.get()
+            if self.torneo_existente(nombre_torneo):
+                messagebox.showerror("Error", "El nombre del torneo ya está registrado. Por favor, elige otro.")
+                return
+            fecha = self.entrada_fecha.get()
+            hora = self.entrada_hora.get()
+            nivel = self.combobox_nivel.get()
+            lugar = self.entrada_lugar.get()
+            precio = self.entrada_precio.get()
+
+            self.guardar_en_la_base(nombre_torneo, fecha, hora, nivel, lugar, precio)
+            messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
+            self.master.destroy()
+
+        except Exception as e: #para que me salte las excepciones si pasa algo 
+            messagebox.showerror("Error", f"Error al registrar: {str(e)}")
+
+    def guardar_en_la_base(nombre_torneo, fecha, hora, nivel, lugar, precio):
+        # Conectar a la base de datos (creará la base de datos si no existe)
+        conexion = sqlite3.connect("registro.db")
+
+        cursor = conexion.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS torneos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT,
+                fecha TEXT,
+                hora TEXT,
+                nivel TEXT,
+                lugar TEXT,
+                precio REAL
+            )
+        ''')
+
+        # Insertar los datos en la tabla    
+        cursor.execute('''
+            INSERT INTO torneos (nombre, fecha, hora, nivel, lugar, precio)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (nombre_torneo, fecha, hora, nivel, lugar, precio))
+        # Guardar los cambios y cerrar la conexión
+        conexion.commit()
+        conexion.close()
+    
+    def torneo_existente(self, nombre_torneo):
+        # Verificar si el nombre de usuario ya está en la base de datos
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+        cursor.execute("SELECT * FROM torneos WHERE nombre_torneo = ?", (nombre_torneo,))
+        resultado = cursor.fetchone()
+        conexion.close()
+        return resultado is not None
+
+    
+
+class Apuntarse_torneos(tk.Toplevel):
+    def __init__(self, master, id_usuario):
+        super().__init__(master)
+        self.title(f"Creación de torneos")
+        self.geometry("400x400")
+        self.id_usuario = id_usuario
+
+class Ver_torneos(tk.Toplevel):
+    def __init__(self, master, id_usuario):
+        super().__init__(master)
+        self.title(f"Creación de torneos")
+        self.geometry("400x400")
+        self.id_usuario = id_usuario
+
 
 if __name__ == "__main__":
     main = Main()

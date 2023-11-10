@@ -1,0 +1,4 @@
+Antes de la ejecución,este es un programa que se ejecuta en python y en el que se necesita descargar la librería de criptography 
+Para la ejecución del código, simplemente hace falta ejecutar el archivo ConClases, el cual es el que contiene todo el código. 
+El archivo de prueba, lleva en el los algoritmos criptográficos utilizados de manera reducida y aislada.
+El archivo de registro es la base de datos creada donde se guardan los datos de los usuarios y sus mensajes
