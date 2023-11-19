@@ -8,6 +8,11 @@ from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives.asymmetric import rsa 
+from cryptography.hazmat.primitives import serialization
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
 
 class Main:
     #La clase Main donde se inicializan las distintas pantallas
@@ -473,19 +478,40 @@ class InterfazRegistro:
                 experiencia TEXT,
                 nombre_usuario TEXT,
                 salt TEXT, 
-                hashed_password TEXT  
-            )
+                hashed_password TEXT
         ''')
 
         # Insertar los datos en la tabla    
         cursor.execute('''
             INSERT INTO usuarios (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password))
+        ''', (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password ))
 
         # Guardar los cambios y cerrar la conexión
         conexion.commit()
         conexion.close()
+
+    def creacion_claves(self):
+        private_key = rsa.generate_private_key(
+            public_exponent= 65537,
+            key_size=2048)
+        privada_pem = private_key.private_bytes(
+            encoding = serialization.Encoding.PEM,
+            format = serialization.PrivateFormat.PKCS8,
+            encryption_algorithm= serialization.BestAvailableEncryption(self.entrada_contraseña)),
+        csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
+            x509.NameAttribute(self.entrada_nombre_apellidos),
+            x509.NameAttribute(self.entrada_ciudad),
+            x509.NameAttribute(self.entrada_correo),
+            x509.NameAttribute(self.combobox_experiencia),
+            x509.NameAttribute(self.entrada_nombre_usuario),
+        ]))
+        
+        return privada_pem
+    
+    
+
+
 
 class ChatVentana(tk.Toplevel):
     def __init__(self, master, nombre_usuario, id_usuario, key):
@@ -650,7 +676,7 @@ class Creacion_torneo(tk.Toplevel):
         self.combobox_horas.pack()
 
         # Selector de minutos
-        minutos = [str(i).zfill(2) for i in range(60)]  # Rellenar con cero a la izquierda
+        minutos = ["00","15", "30", "45"]  # Rellenar con cero a la izquierda
         self.combobox_minutos = ttk.Combobox(self.master, values=minutos, state="readonly")
         self.combobox_minutos.pack()
 
@@ -741,8 +767,6 @@ class Creacion_torneo(tk.Toplevel):
         resultado = cursor.fetchone()
         conexion.close()
         return resultado is not None
-
-    
 
 class Apuntarse_torneos(tk.Toplevel):
     def __init__(self, master, id_usuario):
