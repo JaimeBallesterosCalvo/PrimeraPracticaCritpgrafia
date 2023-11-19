@@ -411,6 +411,12 @@ class InterfazRegistro:
                 # Cerrar la ventana actual y volver a la ventana principal
                 self.master.destroy()
                 return
+            print("Obtiene bien todos los datos")
+            privada_pem = self.creacion_claves(contraseña, nombre_apellidos, ciudad, correo, nombre_usuario)
+            print("hace bien lo de la privada")
+            print(f"privada pem: {privada_pem}")
+            self.guardar_clave_privada(privada_pem)
+            print("hace bien lo de la privada")
             
             self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) #Los guardo en la base de datos 
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
@@ -491,22 +497,66 @@ class InterfazRegistro:
         conexion.commit()
         conexion.close()
 
-    def creacion_claves(self):
+    def guardar_clave_privada(self, privada_pem):
+        # Conectar a la base de datos SQLite
+        conn = sqlite3.connect("pem.db")
+        cursor = conn.cursor()
+
+        # Crear una tabla si no existe
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pem_privadas (
+                id INTEGER PRIMARY KEY,
+                privada_pem BLOB
+            )
+        ''')
+
+        # Insertar el CSR en la base de datos
+        cursor.execute('INSERT INTO pem_privadas (privada_pem) VALUES (?)', (privada_pem))
+        conn.commit()
+
+        # Cerrar la conexión a la base de datos
+        conn.close()
+
+    def creacion_claves(self, contraseña, nombre_apellidos, ciudad, correo, nombre_usuario):
         private_key = rsa.generate_private_key(
             public_exponent= 65537,
             key_size=2048)
+        
         privada_pem = private_key.private_bytes(
             encoding = serialization.Encoding.PEM,
             format = serialization.PrivateFormat.PKCS8,
-            encryption_algorithm= serialization.BestAvailableEncryption(self.entrada_contraseña)),
-        csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
-            x509.NameAttribute(self.entrada_nombre_apellidos),
-            x509.NameAttribute(self.entrada_ciudad),
-            x509.NameAttribute(self.entrada_correo),
-            x509.NameAttribute(self.combobox_experiencia),
-            x509.NameAttribute(self.entrada_nombre_usuario),
-        ]))
+            encryption_algorithm= serialization.BestAvailableEncryption(contraseña.encode("utf-8"))),
         
+        csr = x509.CertificateSigningRequestBuilder().subject_name(x509.Name([
+            x509.NameAttribute(NameOID.COMMON_NAME, nombre_apellidos),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, ciudad),
+            x509.NameAttribute(NameOID.EMAIL_ADDRESS, correo),
+            x509.NameAttribute(NameOID.GIVEN_NAME, nombre_usuario),
+        ])
+        ).sign(private_key, hashes.SHA256())
+
+        # Convertir CSR a bytes para almacenarlo en la base de datos
+        csr_bytes = csr.public_bytes(encoding=serialization.Encoding.PEM)
+
+        # Conectar a la base de datos SQLite
+        conn = sqlite3.connect("pem.db")
+        cursor = conn.cursor()
+
+        # Crear una tabla si no existe
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS csrs (
+                id INTEGER PRIMARY KEY,
+                csr_data BLOB
+            )
+        ''')
+
+        # Insertar el CSR en la base de datos
+        cursor.execute('INSERT INTO csrs (csr_data) VALUES (?)', (csr_bytes,))
+        conn.commit()
+
+        # Cerrar la conexión a la base de datos
+        conn.close()
+
         return privada_pem
     
     
