@@ -421,6 +421,7 @@ class InterfazRegistro:
             self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) #Los guardo en la base de datos 
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
             self.master.destroy()
+            print("se guarda en la base de datos")
 
         except Exception as e: #para que me salte las excepciones si pasa algo 
             messagebox.showerror("Error", f"Error al registrar: {str(e)}")
@@ -473,7 +474,7 @@ class InterfazRegistro:
 
         # Crear un cursor
         cursor = conexion.cursor()
-
+        print("abre el cursor de la base de datos")
         # Crear la tabla si no existe
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS usuarios (
@@ -486,12 +487,13 @@ class InterfazRegistro:
                 salt TEXT, 
                 hashed_password TEXT
         ''')
-
+        print("crea la tabla si no lo esta")
         # Insertar los datos en la tabla    
         cursor.execute('''
             INSERT INTO usuarios (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password ))
+        print("introduce los datos en la base de datos")
 
         # Guardar los cambios y cerrar la conexión
         conexion.commit()
