@@ -535,29 +535,31 @@ class InterfazRegistro:
         ])
         ).sign(private_key, hashes.SHA256())
 
-        # Convertir CSR a bytes para almacenarlo en la base de datos
-        csr_bytes = csr.public_bytes(encoding=serialization.Encoding.PEM)
+        # Convertir CSR a bytes para almacenarlo 
+        with open("~/practica_criptografia/AC1/solicitudes/csr.pem", "wb") as f:
+            f.write(csr.public_bytes(serialization.Encoding.PEM))
 
         # Conectar a la base de datos SQLite
-        conn = sqlite3.connect("pem.db")
-        cursor = conn.cursor()
+        #conn = sqlite3.connect("pem.db")
+        #cursor = conn.cursor()
 
         # Crear una tabla si no existe
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS csrs (
-                id INTEGER PRIMARY KEY,
-                csr_data BLOB
-            )
-        ''')
+        #cursor.execute('''
+         #   CREATE TABLE IF NOT EXISTS csrs (
+         #       id INTEGER PRIMARY KEY,
+          #      csr_data BLOB
+           # )
+        #''')
 
         # Insertar el CSR en la base de datos
-        cursor.execute('INSERT INTO csrs (csr_data) VALUES (?)', (csr_bytes,))
-        conn.commit()
+        #cursor.execute('INSERT INTO csrs (csr_data) VALUES (?)', (csr_bytes,))
+        #conn.commit()
 
         # Cerrar la conexión a la base de datos
-        conn.close()
+        #conn.close()
 
         return privada_pem
+    
     
     
 
