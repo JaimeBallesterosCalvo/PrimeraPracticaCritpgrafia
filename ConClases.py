@@ -411,17 +411,15 @@ class InterfazRegistro:
                 # Cerrar la ventana actual y volver a la ventana principal
                 self.master.destroy()
                 return
-            print("Obtiene bien todos los datos")
-            privada_pem = self.creacion_claves(contraseña, nombre_apellidos, ciudad, correo, nombre_usuario)
-            print("hace bien lo de la privada")
-            print(f"privada pem: {privada_pem}")
-            self.guardar_clave_privada(privada_pem)
-            print("hace bien lo de la privada")
             
             self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) #Los guardo en la base de datos 
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
             self.master.destroy()
-            print("se guarda en la base de datos")
+            
+            #guardar la clave privada
+            privada_pem = self.creacion_claves(contraseña, nombre_apellidos, ciudad, correo, nombre_usuario)
+            
+            self.guardar_clave_privada(privada_pem)
 
         except Exception as e: #para que me salte las excepciones si pasa algo 
             messagebox.showerror("Error", f"Error al registrar: {str(e)}")
@@ -485,7 +483,7 @@ class InterfazRegistro:
                 experiencia TEXT,
                 nombre_usuario TEXT,
                 salt TEXT, 
-                hashed_password TEXT
+                hashed_password TEXT)
         ''')
         print("crea la tabla si no lo esta")
         # Insertar los datos en la tabla    
