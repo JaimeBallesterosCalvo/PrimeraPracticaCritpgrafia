@@ -536,8 +536,17 @@ class InterfazRegistro:
         ).sign(private_key, hashes.SHA256())
 
         # Convertir CSR a bytes para almacenarlo 
-        with open("~/practica_criptografia/AC1/solicitudes/csr.pem", "wb") as f:
+        ruta_del_archivo = "/mnt/c/home/jaime/practica_criptografia/AC1/solicitudes/csr.pem"
+
+        # Crear el directorio si no existe
+        directorio = os.path.dirname(ruta_del_archivo)
+        if not os.path.exists(directorio):
+            os.makedirs(directorio)
+
+        # Guardar el CSR en el archivo
+        with open(ruta_del_archivo, "wb") as f:
             f.write(csr.public_bytes(serialization.Encoding.PEM))
+        print(f"Guardado en: {ruta_del_archivo}")
 
         # Conectar a la base de datos SQLite
         #conn = sqlite3.connect("pem.db")
