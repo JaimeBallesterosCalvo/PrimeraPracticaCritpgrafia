@@ -390,15 +390,26 @@ class InterfazRegistro:
         try:
             # Obtener los valores de los campos de entrada
             nombre_usuario = self.entrada_nombre_usuario.get()
-            
+            if self.usuario_existente(nombre_usuario):
+                messagebox.showerror("Error", "El nombre de usuario ya está registrado. Por favor, elige otro.")
+                return
             contraseña = self.entrada_contraseña.get()
-            
+            if not self.validar_contraseña(contraseña):
+                messagebox.showerror("Error", "La contraseña debe tener al menos 8 caracteres y contener letras y números.")
+                return
             salt, hashed_password = self.guardar_contraseña(contraseña) # Utilizar la función para guardar la contraseña de manera segura
             experiencia = self.combobox_experiencia.get()  # Obtener el valor seleccionado del combobox
             correo = self.entrada_correo.get()
-            
+            if self.correo_existente(correo):
+                messagebox.showerror("Error", "El correo ya está registrado. Por favor, utiliza otro.")
+                return
             nombre_apellidos = self.entrada_nombre_apellidos.get()
             ciudad = self.entrada_ciudad.get()
+            if not self.validar_correo(correo): # Validar el formato del correo electrónic
+                messagebox.showerror("Error", "El correo es incorrecto")
+                # Cerrar la ventana actual y volver a la ventana principal
+                self.master.destroy()
+                return
 
             
             
@@ -527,38 +538,13 @@ class InterfazRegistro:
 
         
 
-        # Convertir CSR a bytes para almacenarlo 
-        #cambiar el nombre del archivo
+        # Esta es la ruta a mi ubuntu
         ruta_del_archivo = "/mnt/c/home/jaime/practica_criptografia/AC1/solicitudes/csr_%s.pem"%nombre_usuario
-
-        # Crear el directorio si no existe
-        #directorio = os.path.dirname(ruta_del_archivo)
-        #if not os.path.exists(directorio):
-        #    os.makedirs(directorio)
 
         # Guardar el CSR en el archivo
         with open(ruta_del_archivo, "wb") as f:
             f.write(csr.public_bytes(serialization.Encoding.PEM))
         print(f"Guardado en: {ruta_del_archivo}")
-
-        # Conectar a la base de datos SQLite
-        #conn = sqlite3.connect("pem.db")
-        #cursor = conn.cursor()
-
-        # Crear una tabla si no existe
-        #cursor.execute('''
-         #   CREATE TABLE IF NOT EXISTS csrs (
-         #       id INTEGER PRIMARY KEY,
-          #      csr_data BLOB
-           # )
-        #''')
-
-        # Insertar el CSR en la base de datos
-        #cursor.execute('INSERT INTO csrs (csr_data) VALUES (?)', (csr_bytes,))
-        #conn.commit()
-
-        # Cerrar la conexión a la base de datos
-        #conn.close()
 
         return privada_pem
     
@@ -825,16 +811,54 @@ class Creacion_torneo(tk.Toplevel):
 class Apuntarse_torneos(tk.Toplevel):
     def __init__(self, master, id_usuario):
         super().__init__(master)
-        self.title(f"Creación de torneos")
+        self.title(f"Apuntarse a torneos")
         self.geometry("400x400")
         self.id_usuario = id_usuario
+
+    # Crear un widget Treeview para mostrar los torneos
+        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio"), show="headings")
+        self.treeview.heading("Nombre", text="Nombre del Torneo")
+        self.treeview.heading("Fecha", text="Fecha")
+        self.treeview.heading("Hora", text="Hora")
+        self.treeview.heading("Nivel", text="Nivel")
+        self.treeview.heading("Lugar", text="Lugar")
+        self.treeview.heading("Precio", text="Precio")
+
+        self.treeview.pack(pady=10)
+
+        # Llamar a un método para llenar el Treeview con los datos de los torneos
+        self.visualizar_torneos()
+
+    def visualizar_torneos(self):
+        try:
+            # Conectar a la base de datos
+            conexion = sqlite3.connect("registro.db")
+            cursor = conexion.cursor()
+
+            # Obtener datos de los torneos desde la base de datos
+            cursor.execute("SELECT nombre_torneo, fecha, hora, nivel, lugar, precio FROM Torneos")
+            torneos = cursor.fetchall()
+
+            # Insertar datos de los torneos en el Treeview
+            for torneo in torneos:
+                self.treeview.insert("", "end", values=torneo)
+
+            # Cerrar la conexión a la base de datos
+            conexion.close()
+
+        except Exception as e:
+            # Manejar excepciones de manera adecuada
+            print(f"Error en visualizar_torneos: {str(e)}")
+    
 
 class Ver_torneos(tk.Toplevel):
     def __init__(self, master, id_usuario):
         super().__init__(master)
-        self.title(f"Creación de torneos")
+        self.title(f"Ver torneos")
         self.geometry("400x400")
         self.id_usuario = id_usuario
+
+    
 
 
 if __name__ == "__main__":
