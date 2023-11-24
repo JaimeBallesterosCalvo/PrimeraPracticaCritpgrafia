@@ -816,13 +816,14 @@ class Apuntarse_torneos(tk.Toplevel):
         self.id_usuario = id_usuario
 
     # Crear un widget Treeview para mostrar los torneos
-        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio"), show="headings")
+        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio", "Inscripción"), show="headings")
         self.treeview.heading("Nombre", text="Nombre del Torneo")
         self.treeview.heading("Fecha", text="Fecha")
         self.treeview.heading("Hora", text="Hora")
         self.treeview.heading("Nivel", text="Nivel")
         self.treeview.heading("Lugar", text="Lugar")
         self.treeview.heading("Precio", text="Precio")
+        self.treeview.heading("Inscripción", text="Inscripción")
 
         self.treeview.pack(pady=10)
 
@@ -841,7 +842,10 @@ class Apuntarse_torneos(tk.Toplevel):
 
             # Insertar datos de los torneos en el Treeview
             for torneo in torneos:
-                self.treeview.insert("", "end", values=torneo)
+                # Crear un botón "Apuntarse" para cada fila y agregarlo a la tupla de valores
+                boton_apuntarse = tk.Button(self.treeview, text="Apuntarse", command=lambda t=torneo: self.apuntarse(t))
+                self.treeview.insert("", "end", values=torneo + (boton_apuntarse,))
+
 
             # Cerrar la conexión a la base de datos
             conexion.close()
@@ -849,6 +853,11 @@ class Apuntarse_torneos(tk.Toplevel):
         except Exception as e:
             # Manejar excepciones de manera adecuada
             print(f"Error en visualizar_torneos: {str(e)}")
+
+    def apuntarse(self, torneo):
+        # Aquí puedes implementar la lógica para apuntarte al torneo seleccionado
+        nombre_torneo = torneo[0]
+        print(f"Apuntándose al torneo: {nombre_torneo}")
     
 
 class Ver_torneos(tk.Toplevel):
