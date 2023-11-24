@@ -390,27 +390,17 @@ class InterfazRegistro:
         try:
             # Obtener los valores de los campos de entrada
             nombre_usuario = self.entrada_nombre_usuario.get()
-            if self.usuario_existente(nombre_usuario):
-                messagebox.showerror("Error", "El nombre de usuario ya está registrado. Por favor, elige otro.")
-                return
+            
             contraseña = self.entrada_contraseña.get()
-            if not self.validar_contraseña(contraseña):
-                messagebox.showerror("Error", "La contraseña debe tener al menos 8 caracteres y contener letras y números.")
-                return
+            
             salt, hashed_password = self.guardar_contraseña(contraseña) # Utilizar la función para guardar la contraseña de manera segura
             experiencia = self.combobox_experiencia.get()  # Obtener el valor seleccionado del combobox
             correo = self.entrada_correo.get()
-            if self.correo_existente(correo):
-                messagebox.showerror("Error", "El correo ya está registrado. Por favor, utiliza otro.")
-                return
+            
             nombre_apellidos = self.entrada_nombre_apellidos.get()
             ciudad = self.entrada_ciudad.get()
 
-            if not self.validar_correo(correo): # Validar el formato del correo electrónic
-                messagebox.showerror("Error", "El correo es incorrecto")
-                # Cerrar la ventana actual y volver a la ventana principal
-                self.master.destroy()
-                return
+            
             
             self.guardar_en_base_de_datos(nombre_apellidos, correo, ciudad, experiencia, nombre_usuario, salt, hashed_password) #Los guardo en la base de datos 
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
@@ -535,8 +525,11 @@ class InterfazRegistro:
         ])
         ).sign(private_key, hashes.SHA256())
 
+        
+
         # Convertir CSR a bytes para almacenarlo 
-        ruta_del_archivo = "/mnt/c/home/jaime/practica_criptografia/AC1/solicitudes/csr.pem"
+        #cambiar el nombre del archivo
+        ruta_del_archivo = "/mnt/c/home/jaime/practica_criptografia/AC1/solicitudes/csr_%s.pem"%nombre_usuario
 
         # Crear el directorio si no existe
         #directorio = os.path.dirname(ruta_del_archivo)
