@@ -539,9 +539,9 @@ class InterfazRegistro:
         ruta_del_archivo = "/mnt/c/home/jaime/practica_criptografia/AC1/solicitudes/csr.pem"
 
         # Crear el directorio si no existe
-        directorio = os.path.dirname(ruta_del_archivo)
-        if not os.path.exists(directorio):
-            os.makedirs(directorio)
+        #directorio = os.path.dirname(ruta_del_archivo)
+        #if not os.path.exists(directorio):
+        #    os.makedirs(directorio)
 
         # Guardar el CSR en el archivo
         with open(ruta_del_archivo, "wb") as f:
