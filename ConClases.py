@@ -117,7 +117,7 @@ class MenuPrincipal:
     def apuntarse_torneos(self):
         #te llevo a la clase apuntarse a torneos
         id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
-        apuntarse_torneos = Apuntarse_torneos(self.master,id_usuario_actual)
+        apuntarse_torneos = Apuntarse_torneos(self.master,id_usuario_actual, self.nombre_usuario_actual)
     
     def ver_torneos(self):
         #te lleva a la clase ver torneos
@@ -809,26 +809,29 @@ class Creacion_torneo(tk.Toplevel):
         return resultado is not None
 
 class Apuntarse_torneos(tk.Toplevel):
-    def __init__(self, master, id_usuario):
+    def __init__(self, master, id_usuario, nombre_usuario):
         super().__init__(master)
         self.title(f"Apuntarse a torneos")
         self.geometry("400x400")
         self.id_usuario = id_usuario
+        self.nombre_usuario = nombre_usuario
 
     # Crear un widget Treeview para mostrar los torneos
-        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio", "Inscripción"), show="headings")
+        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio"), show="headings")
         self.treeview.heading("Nombre", text="Nombre del Torneo")
         self.treeview.heading("Fecha", text="Fecha")
         self.treeview.heading("Hora", text="Hora")
         self.treeview.heading("Nivel", text="Nivel")
         self.treeview.heading("Lugar", text="Lugar")
         self.treeview.heading("Precio", text="Precio")
-        self.treeview.heading("Inscripción", text="Inscripción")
 
         self.treeview.pack(pady=10)
 
         # Llamar a un método para llenar el Treeview con los datos de los torneos
         self.visualizar_torneos()
+        self.treeview.pack(pady=10)
+        self.treeview.bind("<Double-1>", self.OnDoubleClick)
+
 
     def visualizar_torneos(self):
         try:
@@ -840,11 +843,10 @@ class Apuntarse_torneos(tk.Toplevel):
             cursor.execute("SELECT nombre_torneo, fecha, hora, nivel, lugar, precio FROM Torneos")
             torneos = cursor.fetchall()
 
-            # Insertar datos de los torneos en el Treeview
+           # Insertar datos de los torneos en el Treeview
             for torneo in torneos:
                 # Crear un botón "Apuntarse" para cada fila y agregarlo a la tupla de valores
-                boton_apuntarse = tk.Button(self.treeview, text="Apuntarse", command=lambda t=torneo: self.apuntarse(t))
-                self.treeview.insert("", "end", values=torneo + (boton_apuntarse,))
+                self.treeview.insert("", "end", values=torneo)
 
 
             # Cerrar la conexión a la base de datos
@@ -854,10 +856,57 @@ class Apuntarse_torneos(tk.Toplevel):
             # Manejar excepciones de manera adecuada
             print(f"Error en visualizar_torneos: {str(e)}")
 
+    def OnDoubleClick(self,event):
+        # Obtener el elemento seleccionado
+        item = self.treeview.selection()[0]
+
+        # Obtener los valores de la fila seleccionada
+        valores = self.treeview.item(item, "values")
+
+        # Aquí puedes realizar alguna acción con los valores, por ejemplo, apuntarse al torneo
+        nombre_torneo = valores[0]
+        print(f"Doble clic en el torneo: {nombre_torneo}")
+
+        # Lógica para apuntarse al torneo (puedes llamar a tu función apuntarse aquí)
+        self.apuntarse(nombre_torneo)
+
+
     def apuntarse(self, torneo):
         # Aquí puedes implementar la lógica para apuntarte al torneo seleccionado
-        nombre_torneo = torneo[0]
-        print(f"Apuntándose al torneo: {nombre_torneo}")
+        #nombre_torneo = torneo[0]
+        #print(f"Apuntándose al torneo: {nombre_torneo}")
+        try:
+            # Conectar a la base de datos
+            conexion = sqlite3.connect("registro.db")
+            cursor = conexion.cursor()
+
+            # Obtener el nombre del torneo y el participante
+            nombre_torneo = torneo
+            participante = self.nombre_usuario 
+            # Crear la tabla de participantes si no existe
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Participantes (
+                    id INTEGER PRIMARY KEY,
+                    nombre_torneo TEXT,
+                    nombre_usuario TEXT
+                )
+             ''')
+             # Insertar el participante en la tabla
+            cursor.execute('''
+                INSERT INTO Participantes (nombre_torneo, nombre_usuario)
+                VALUES (?, ?)
+            ''', (nombre_torneo, self.nombre_usuario))
+            # Guardar los cambios y cerrar la conexión
+            conexion.commit()
+            conexion.close() 
+
+            print(f"Apuntado a '{participante}' al torneo: {nombre_torneo}")
+            mensaje= f"Has sido apuntado al torneo {nombre_torneo}"
+            messagebox.showinfo("Torneos", mensaje)
+
+
+        except Exception as e:
+            print(f"Error al apuntarse al torneo: {str(e)}")
     
 
 class Ver_torneos(tk.Toplevel):
