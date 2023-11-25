@@ -12,7 +12,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography import x509
 from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from tkinter import simpledialog
 
 class Main:
     #La clase Main donde se inicializan las distintas pantallas
@@ -548,11 +549,6 @@ class InterfazRegistro:
 
         return privada_pem
     
-    
-    
-
-
-
 class ChatVentana(tk.Toplevel):
     def __init__(self, master, nombre_usuario, id_usuario, key):
         super().__init__(master)
@@ -867,14 +863,10 @@ class Apuntarse_torneos(tk.Toplevel):
         nombre_torneo = valores[0]
         print(f"Doble clic en el torneo: {nombre_torneo}")
 
-        # Lógica para apuntarse al torneo (puedes llamar a tu función apuntarse aquí)
         self.apuntarse(nombre_torneo)
 
 
     def apuntarse(self, torneo):
-        # Aquí puedes implementar la lógica para apuntarte al torneo seleccionado
-        #nombre_torneo = torneo[0]
-        #print(f"Apuntándose al torneo: {nombre_torneo}")
         try:
             # Conectar a la base de datos
             conexion = sqlite3.connect("registro.db")
@@ -883,19 +875,21 @@ class Apuntarse_torneos(tk.Toplevel):
             # Obtener el nombre del torneo y el participante
             nombre_torneo = torneo
             participante = self.nombre_usuario 
+            firma = self.firma_al_apuntarse(nombre_torneo)
             # Crear la tabla de participantes si no existe
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS Participantes (
                     id INTEGER PRIMARY KEY,
                     nombre_torneo TEXT,
-                    nombre_usuario TEXT
+                    nombre_usuario TEXT,
+                    firma TEXT 
                 )
              ''')
              # Insertar el participante en la tabla
             cursor.execute('''
-                INSERT INTO Participantes (nombre_torneo, nombre_usuario)
-                VALUES (?, ?)
-            ''', (nombre_torneo, self.nombre_usuario))
+                INSERT INTO Participantes (nombre_torneo, nombre_usuario,firma)
+                VALUES (?, ?,?)
+            ''', (nombre_torneo, participante, firma))
             # Guardar los cambios y cerrar la conexión
             conexion.commit()
             conexion.close() 
@@ -903,11 +897,91 @@ class Apuntarse_torneos(tk.Toplevel):
             print(f"Apuntado a '{participante}' al torneo: {nombre_torneo}")
             mensaje= f"Has sido apuntado al torneo {nombre_torneo}"
             messagebox.showinfo("Torneos", mensaje)
-
-
         except Exception as e:
             print(f"Error al apuntarse al torneo: {str(e)}")
     
+    def firma_al_apuntarse(self, nombre_torneo):
+        mensaje_firmado = f"{self.nombre_usuario} ha sido apuntado al torneo {nombre_torneo}"
+        contraseña = self.obtener_contraseña()
+        self.verificar_contraseña_en_base_de_datos(self.id_usuario, contraseña)
+        key_file = self.obtener_clave_privada_desde_bd(self.id_usuario)
+        privada_participante = serialization.load_pem_private_key(
+            key_file,
+            password=contraseña.encode("utf-8"),
+    )
+        print("después de llamar a la clave privada")
+        # Firmar el mensaje
+        signature = privada_participante.sign(
+            mensaje_firmado.encode("utf-8"),
+            padding.PSS(
+                mgf=padding.MGF1(hashes.SHA256()),
+                salt_length=padding.PSS.MAX_LENGTH
+            ),
+            hashes.SHA256()
+        )
+        return signature
+    
+    def obtener_clave_privada_desde_bd(self, id_usuario):
+        # Conectar a la base de datos
+        conexion = sqlite3.connect("pem.db")
+        cursor = conexion.cursor()
+
+        # Consulta para obtener la clave privada
+        cursor.execute("SELECT privada_pem FROM pem_privadas WHERE id = ?", (id_usuario,))
+        resultado = cursor.fetchone()
+
+        # Cerrar la conexión a la base de datos
+        conexion.close()
+
+        # Verificar si se encontró la clave privada
+        if resultado:
+            return resultado[0]  # Devolver directamente la clave privada
+        else:
+            # Manejar el caso en el que no se encontró la clave privada
+            print(f"No se encontró la clave privada para el usuario con id {id_usuario}")
+            return None
+        
+    def obtener_contraseña(self):
+        root = tk.Tk()
+        root.withdraw()  # Oculta la ventana principal de tkinter
+        # Muestra un cuadro de diálogo para obtener la contraseña de manera segura
+        password = simpledialog.askstring("Contraseña", "Introduce tu contraseña para confirmar su inscripción:", show='*')
+        root.destroy()
+        return password
+    
+    def verificar_la_contraseña(self, contraseña, stored_salt, hashed_password_en_bd):
+        #Se utiliza el Scrypt para cifrar la contraseña
+        kdf = Scrypt(
+            salt=stored_salt,
+            length=32,
+            n=2**14,
+            r=8,
+            p=1,
+        )
+        key = kdf.derive(contraseña.encode("utf-8"))
+
+        return key == hashed_password_en_bd 
+    
+    def verificar_contraseña_en_base_de_datos(self, id_usuario, contraseña):
+        #Comprueba los datos dados con los de la base de datos 
+        conexion = sqlite3.connect("registro.db")
+        try:
+            cursor = conexion.cursor()
+            cursor.execute('''
+                SELECT salt, hashed_password
+                FROM usuarios
+                WHERE id = ?
+            ''', (id_usuario,))
+            resultado = cursor.fetchone()
+            if resultado:
+                stored_salt, hashed_password_en_bd = resultado
+                return self.verificar_la_contraseña(contraseña, stored_salt, hashed_password_en_bd)                
+        finally:
+            conexion.close()
+    
+
+    
+
 
 class Ver_torneos(tk.Toplevel):
     def __init__(self, master, id_usuario):
@@ -916,7 +990,6 @@ class Ver_torneos(tk.Toplevel):
         self.geometry("400x400")
         self.id_usuario = id_usuario
 
-    
 
 
 if __name__ == "__main__":
