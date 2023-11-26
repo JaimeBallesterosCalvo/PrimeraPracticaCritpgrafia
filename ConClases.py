@@ -113,7 +113,7 @@ class MenuPrincipal:
     def crear_torneos(self):
         #te lleva a la clase crear torneos
         id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
-        crear_torneos = Creacion_torneo(self.master,id_usuario_actual)
+        crear_torneos = Creacion_torneo(self.master,id_usuario_actual, self.nombre_usuario_actual)
 
     def apuntarse_torneos(self):
         #te llevo a la clase apuntarse a torneos
@@ -123,7 +123,7 @@ class MenuPrincipal:
     def ver_torneos(self):
         #te lleva a la clase ver torneos
         id_usuario_actual = self.obtener_id_usuario(self.nombre_usuario_actual)
-        ver_torneos = Ver_torneos(self.master,id_usuario_actual)
+        ver_torneos = Ver_torneos(self.master,id_usuario_actual, self.nombre_usuario_actual)
 
 
     def obtener_id_usuario(self, nombre_usuario):
@@ -681,11 +681,12 @@ class ChatVentana(tk.Toplevel):
         return decrypted_message
     
 class Creacion_torneo(tk.Toplevel):
-    def __init__(self, master, id_usuario):
+    def __init__(self, master, id_usuario, nombre_usuario):
         self.master = tk.Tk() 
         self.master.title(f"Creación de torneos")
         self.master.geometry("400x400")
         self.id_usuario = id_usuario
+        self.nombre_usuario = nombre_usuario
         self.datos_torneos()
         self.boton_crear_torneos = tk.Button(self.master, text="Crear", command=self.crear) 
         self.boton_crear_torneos.pack()
@@ -754,14 +755,14 @@ class Creacion_torneo(tk.Toplevel):
             lugar = self.entrada_lugar.get()
             precio = self.entrada_precio.get()
 
-            self.guardar_en_la_base(nombre_torneo, fecha, hora_completa, nivel, lugar, precio)
+            self.guardar_en_la_base(nombre_torneo, fecha, hora_completa, nivel, lugar, precio, self.nombre_usuario)
             messagebox.showinfo("Registro Completado", "Registro completado con éxito.") # Mostrar un mensaje de éxito
             self.master.destroy()
 
         except Exception as e: #para que me salte las excepciones si pasa algo 
             messagebox.showerror("Error", f"Error al registrar: {str(e)}")
 
-    def guardar_en_la_base(self, nombre_torneo, fecha, hora, nivel, lugar, precio):
+    def guardar_en_la_base(self, nombre_torneo, fecha, hora, nivel, lugar, precio, nombre_usuario):
         try:
             # Conectar a la base de datos (creará la base de datos si no existe)
             conexion = sqlite3.connect("registro.db")
@@ -775,16 +776,17 @@ class Creacion_torneo(tk.Toplevel):
                     hora TEXT,
                     nivel TEXT,
                     lugar TEXT,
-                    precio REAL
+                    precio REAL,
+                    nombre_usuario TEXT
                 )
             ''')
             
 
             # Insertar los datos en la tabla
             cursor.execute('''
-                INSERT INTO Torneos (nombre_torneo, fecha, hora, nivel, lugar, precio)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (nombre_torneo, fecha, hora, nivel, lugar, precio))
+                INSERT INTO Torneos (nombre_torneo, fecha, hora, nivel, lugar, precio, nombre_usuario)
+                VALUES (?, ?, ?, ?, ?, ?,?)
+            ''', (nombre_torneo, fecha, hora, nivel, lugar, precio,nombre_usuario))
             # Guardar los cambios y cerrar la conexión
             conexion.commit()
             conexion.close()
@@ -813,13 +815,14 @@ class Apuntarse_torneos(tk.Toplevel):
         self.nombre_usuario = nombre_usuario
 
     # Crear un widget Treeview para mostrar los torneos
-        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio"), show="headings")
+        self.treeview = ttk.Treeview(self, columns=("Nombre", "Fecha", "Hora", "Nivel", "Lugar", "Precio", "Creador"), show="headings")
         self.treeview.heading("Nombre", text="Nombre del Torneo")
         self.treeview.heading("Fecha", text="Fecha")
         self.treeview.heading("Hora", text="Hora")
         self.treeview.heading("Nivel", text="Nivel")
         self.treeview.heading("Lugar", text="Lugar")
         self.treeview.heading("Precio", text="Precio")
+        self.treeview.heading("Creador", text="Nombre del Creador")
 
         self.treeview.pack(pady=10)
 
@@ -836,7 +839,7 @@ class Apuntarse_torneos(tk.Toplevel):
             cursor = conexion.cursor()
 
             # Obtener datos de los torneos desde la base de datos
-            cursor.execute("SELECT nombre_torneo, fecha, hora, nivel, lugar, precio FROM Torneos")
+            cursor.execute("SELECT nombre_torneo, fecha, hora, nivel, lugar, precio, nombre_usuario FROM Torneos")
             torneos = cursor.fetchall()
 
            # Insertar datos de los torneos en el Treeview
@@ -876,20 +879,23 @@ class Apuntarse_torneos(tk.Toplevel):
             nombre_torneo = torneo
             participante = self.nombre_usuario 
             firma = self.firma_al_apuntarse(nombre_torneo)
+            #no verificado es un 0, cuando lo verifique cambiará a 1
+            verificado = 0
             # Crear la tabla de participantes si no existe
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS Participantes (
                     id INTEGER PRIMARY KEY,
                     nombre_torneo TEXT,
                     nombre_usuario TEXT,
-                    firma TEXT 
+                    firma TEXT,
+                    verificado TEXT
                 )
              ''')
              # Insertar el participante en la tabla
             cursor.execute('''
-                INSERT INTO Participantes (nombre_torneo, nombre_usuario,firma)
-                VALUES (?, ?,?)
-            ''', (nombre_torneo, participante, firma))
+                INSERT INTO Participantes (nombre_torneo, nombre_usuario,firma, verificado)
+                VALUES (?, ?,?, ?)
+            ''', (nombre_torneo, participante, firma, verificado))
             # Guardar los cambios y cerrar la conexión
             conexion.commit()
             conexion.close() 
@@ -978,17 +984,92 @@ class Apuntarse_torneos(tk.Toplevel):
                 return self.verificar_la_contraseña(contraseña, stored_salt, hashed_password_en_bd)                
         finally:
             conexion.close()
-    
-
-    
-
 
 class Ver_torneos(tk.Toplevel):
-    def __init__(self, master, id_usuario):
+    def __init__(self, master, id_usuario, nombre_usuario):
         super().__init__(master)
         self.title(f"Ver torneos")
         self.geometry("400x400")
         self.id_usuario = id_usuario
+        self.nombre_usuario = nombre_usuario
+
+        #para que el usuario pida el nombre del torneo
+        nombre_del_torneo = self.obtener_nombre_torneo()
+        comprobacion = self.comprobar_torneo(nombre_del_torneo,self.nombre_usuario)
+        if comprobacion:
+            #creación de la interfaz para ver los participantes
+            self.treeview = ttk.Treeview(self, columns=("Torneo", "Participante", "Confirmado"), show="headings")
+            self.treeview.heading("Torneo", text="Nombre del Torneo")
+            self.treeview.heading("Participante", text="Participante")
+            self.treeview.heading("Confirmado", text="Confirmado")
+            self.treeview.pack(pady=10)
+            self.visualizar_participantes(nombre_del_torneo)
+            self.treeview.pack(pady=10)
+            self.verificar_firma()
+        else:
+            self.destroy()
+
+    def obtener_nombre_torneo(self):
+        root = tk.Tk()
+        root.withdraw()  # Oculta la ventana principal de tkinter
+        # Muestra un cuadro de diálogo para obtener la contraseña de manera segura
+        torneo = simpledialog.askstring("Torneo", "Introduce tu torneo que quieres ver:")
+        root.destroy()
+        return torneo
+
+    def comprobar_torneo(self, nombre_del_torneo, nombre_usuario):
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+        cursor.execute('''
+                SELECT nombre_usuario
+                FROM Torneos
+                WHERE nombre_torneo = ?
+            ''', (nombre_del_torneo,))
+        resultado = cursor.fetchone()
+        if resultado is None:
+            error_message = "No existe el torneo introducido"
+            messagebox.showerror("Error", error_message)
+        elif resultado[0] == nombre_usuario:
+            print("este es tu torneo")
+            return True
+        else:
+            error_message = "No eres el creador de este torneo"
+            messagebox.showerror("Error", error_message)
+            return False
+            
+    def visualizar_participantes(self, nombre_torneo):
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+
+        # Obtener datos de los torneos con el mismo nombre
+        cursor.execute('''
+            SELECT nombre_torneo, nombre_usuario, verificado
+            FROM Participantes
+            WHERE nombre_torneo = ?
+        ''', (nombre_torneo,))
+        torneos = cursor.fetchall()
+
+        # Insertar datos de los torneos en el Treeview
+        for torneo in torneos:
+            self.treeview.insert("", "end", values=torneo)
+
+        # Cerrar la conexión a la base de datos
+        conexion.close()
+
+    def verificar_firma(self):
+        id_usuario_verificar = self.obtener_id_participante()
+        if id_usuario_verificar < 10:
+            id_usuario_verificar = str(0) + str(self.id_usuario)
+        else:
+            id_usuario_verificar = self.id_usuario
+
+        ruta_pem ="C:\Users\Jaime\Desktop\uni\uni 4 primer cautri\criptografía\8204_E1_app\claves_firmadas\%s.pem"%id_usuario_verificar
+
+        with open(ruta_pem, 'rb') as key_file:
+            clave_publica = key_file.read() 
+
+
+
 
 
 
