@@ -1073,15 +1073,35 @@ class Ver_torneos(tk.Toplevel):
             else:
                 id_usuario_participante = id_usuario_participante
             print(f"el id que esta guardando:{id_usuario_participante}")
+            
+            
+            ruta_AC1 = os.getcwd()
+            ruta_archivo_AC1 = "Ack/AC1/ac1cert.pem"
+            ruta_AC1_publica = os.path.join(ruta_AC1, ruta_archivo_AC1)
+            print(f"ruta pem: {ruta_AC1_publica}")
+            with open(ruta_AC1_publica, 'rb') as AC1_publica:
+                AC1_cert_pem = AC1_publica.read()
+                clave_publica_AC1 = load_pem_x509_certificate(AC1_cert_pem).public_key() 
+            
             ruta_actual = os.getcwd()
             ruta_archivo ="Ack/AC1/nuevoscerts/%s.pem"%id_usuario_participante
             ruta_pem = os.path.join(ruta_actual, ruta_archivo)
             print(f"ruta pem: {ruta_pem}")
 
+            with open(ruta_pem, 'rb') as firma_cert:
+                pem_data_firma_cert = firma_cert.read()
+                cert_a_verificar = load_pem_x509_certificate(pem_data_firma_cert)
+                firma_cert_a_verificar = cert_a_verificar.signature
+                
             with open(ruta_pem, 'rb') as key_file:
                 pem_data = key_file.read()
                 clave_publica = load_pem_x509_certificate(pem_data).public_key() 
                 print(f"clave publica {nombre_participante}: {clave_publica}")
+
+            clave_publica_AC1.verify(firma_cert_a_verificar,
+                                         cert_a_verificar.tbs_certificate_bytes, 
+                                         padding.PKCS1v15(), #esto depende de lo que hayamos usado
+                                         cert_a_verificar.signature_hash_algorithm)
 
             mensaje_firmado = f"{nombre_participante} ha sido apuntado al torneo {nombre_torneo}"
             try:
@@ -1100,6 +1120,7 @@ class Ver_torneos(tk.Toplevel):
                 self.actualizar_firma_en_base_de_datos(nombre_torneo, nombre_participante)
 
                 print(f"Firma del participante {nombre_participante} verificada con éxito.")
+
             except Exception as e:
                 print(f"Error al verificar la firma del participante {nombre_participante}: {e}")
 
