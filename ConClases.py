@@ -14,6 +14,8 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.asymmetric import padding
 from tkinter import simpledialog
+from cryptography.x509 import load_pem_x509_certificate
+
 
 class Main:
     #La clase Main donde se inicializan las distintas pantallas
@@ -1003,9 +1005,10 @@ class Ver_torneos(tk.Toplevel):
             self.treeview.heading("Participante", text="Participante")
             self.treeview.heading("Confirmado", text="Confirmado")
             self.treeview.pack(pady=10)
+            self.verificar_firma(nombre_del_torneo)
             self.visualizar_participantes(nombre_del_torneo)
             self.treeview.pack(pady=10)
-            self.verificar_firma()
+
         else:
             self.destroy()
 
@@ -1056,17 +1059,82 @@ class Ver_torneos(tk.Toplevel):
         # Cerrar la conexión a la base de datos
         conexion.close()
 
-    def verificar_firma(self):
-        id_usuario_verificar = self.obtener_id_participante()
-        if id_usuario_verificar < 10:
-            id_usuario_verificar = str(0) + str(self.id_usuario)
-        else:
-            id_usuario_verificar = self.id_usuario
+    def verificar_firma(self, nombre_torneo):
+        participantes_torneo= self.obtener_participantes(nombre_torneo)
+        for participante in participantes_torneo:
+            nombre_participante = participante[0] 
+            firma_participante = participante[1]
+            print(f"nombre_participante: {nombre_participante}")
+            id_usuario_participante = self.obtener_id_participante(nombre_participante)
+            if id_usuario_participante < 10:
+                id_usuario_participante = str(0) + str(id_usuario_participante)
+            else:
+                id_usuario_participante = id_usuario_participante
+            print(f"el id que esta guardando:{id_usuario_participante}")
+            ruta_pem ="C:/Users/Jaime/Desktop/uni/uni 4 primer cautri/criptografía/8204_E1_app/claves_firmadas/%s.pem"%id_usuario_participante
 
-        ruta_pem ="C:\Users\Jaime\Desktop\uni\uni 4 primer cautri\criptografía\8204_E1_app\claves_firmadas\%s.pem"%id_usuario_verificar
+            with open(ruta_pem, 'rb') as key_file:
+                pem_data = key_file.read()
+                clave_publica = load_pem_x509_certificate(pem_data).public_key() 
+                print(f"clave publica {nombre_participante}: {clave_publica}")
 
-        with open(ruta_pem, 'rb') as key_file:
-            clave_publica = key_file.read() 
+            mensaje_firmado = f"{nombre_participante} ha sido apuntado al torneo {nombre_torneo}"
+            try:
+                # Verificar la firma
+                clave_publica.verify(
+                    firma_participante,
+                    mensaje_firmado.encode('utf-8'),  # Necesitas codificar el mensaje para verificar la firma
+                    padding.PSS(
+                        mgf=padding.MGF1(hashes.SHA256()),
+                        salt_length=padding.PSS.MAX_LENGTH
+                    ),
+                    hashes.SHA256()
+                )
+
+                # Si la verificación es exitosa, actualiza la firma en la base de datos
+                self.actualizar_firma_en_base_de_datos(nombre_torneo, nombre_participante)
+
+                print(f"Firma del participante {nombre_participante} verificada con éxito.")
+            except Exception as e:
+                print(f"Error al verificar la firma del participante {nombre_participante}: {e}")
+
+    def actualizar_firma_en_base_de_datos(self, nombre_torneo, nombre_participante):
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+        cursor.execute('''
+            UPDATE Participantes
+            SET verificado = 1
+            WHERE nombre_torneo = ? AND nombre_usuario = ?
+        ''', (nombre_torneo, nombre_participante))
+        conexion.commit()
+        conexion.close()
+
+    def obtener_participantes(self, nombre_torneo):
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+        cursor.execute('''
+            SELECT nombre_usuario,firma 
+            FROM Participantes
+            WHERE nombre_torneo = ?
+        ''', (nombre_torneo,))
+        participantes = cursor.fetchall() #devuelve una tupla con el id usuario,
+        conexion.close()
+        return participantes
+    
+    def obtener_id_participante(self, nombre_usuario):
+        conexion = sqlite3.connect("registro.db")
+        cursor = conexion.cursor()
+
+        cursor.execute('''
+                SELECT id
+                FROM usuarios
+                WHERE nombre_usuario = ?
+            ''', (nombre_usuario,))
+            
+        resultado = cursor.fetchone()  
+
+        conexion.close()
+        return resultado[0]
 
 
 
