@@ -542,7 +542,9 @@ class InterfazRegistro:
         
 
         # Esta es la ruta a mi ubuntu
-        ruta_del_archivo = "/mnt/c/home/jaime/practica_criptografia/AC1/solicitudes/csr_%s.pem"%nombre_usuario
+        ruta_actual = os.getcwd()
+        ruta_archivo = "Ack/AC1/solicitudes/csr_%s.pem"%nombre_usuario
+        ruta_del_archivo = os.path.join(ruta_actual, ruta_archivo)
 
         # Guardar el CSR en el archivo
         with open(ruta_del_archivo, "wb") as f:
@@ -1071,7 +1073,10 @@ class Ver_torneos(tk.Toplevel):
             else:
                 id_usuario_participante = id_usuario_participante
             print(f"el id que esta guardando:{id_usuario_participante}")
-            ruta_pem ="C:/Users/Jaime/Desktop/uni/uni 4 primer cautri/criptografía/8204_E1_app/claves_firmadas/%s.pem"%id_usuario_participante
+            ruta_actual = os.getcwd()
+            ruta_archivo ="Ack/AC1/nuevoscerts/%s.pem"%id_usuario_participante
+            ruta_pem = os.path.join(ruta_actual, ruta_archivo)
+            print(f"ruta pem: {ruta_pem}")
 
             with open(ruta_pem, 'rb') as key_file:
                 pem_data = key_file.read()

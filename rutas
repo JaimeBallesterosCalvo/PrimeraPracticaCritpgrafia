@@ -1,0 +1,9 @@
+import os
+
+ruta_actual = os.getcwd()
+ruta_archivo ="claves_firmadas\hola.pem"
+ruta_pem = os.path.join(ruta_actual, ruta_archivo)
+
+print("Ruta final:", ruta_pem)
+print("Ruta actual:", ruta_actual)
+
